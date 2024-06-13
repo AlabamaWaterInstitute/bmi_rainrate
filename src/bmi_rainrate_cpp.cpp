@@ -1,3 +1,6 @@
+#ifndef BMI_RAINRATE_CPP_CPP
+#define BMI_RAINRATE_CPP_CPP
+
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 #define SOURCE_LOC " (" __FILE__ ":" TOSTRING(__LINE__) ")"
@@ -24,22 +27,22 @@
 #include <math.h>
 #include <stdexcept>
 
-std::string BmiRainRateCpp::GetComponentName(){_en()
+std::string BmiRainRateCpp::GetComponentName(){
   // return "Testing BMI C++ Model";
   return "BMI Rain Rate C++";
 }
 
-double BmiRainRateCpp::GetCurrentTime(){_en()
+double BmiRainRateCpp::GetCurrentTime(){
   return current_model_time;
 }
 
-double BmiRainRateCpp::GetEndTime(){_en()
+double BmiRainRateCpp::GetEndTime(){
   double time = this->GetStartTime();
   time += this->num_time_steps * this->time_step_size;
   return time;
 }
 
-int BmiRainRateCpp::GetGridRank(const int grid){_en()
+int BmiRainRateCpp::GetGridRank(const int grid){
   if (grid == 0) {
       return 1;
   }
@@ -48,7 +51,7 @@ int BmiRainRateCpp::GetGridRank(const int grid){_en()
   }
 }
 
-int BmiRainRateCpp::GetGridSize(const int grid){_en()
+int BmiRainRateCpp::GetGridSize(const int grid){
   if (grid == 0) {
       return 1;
   }
@@ -57,7 +60,7 @@ int BmiRainRateCpp::GetGridSize(const int grid){_en()
   }
 }
 
-std::string BmiRainRateCpp::GetGridType(const int grid){_en()
+std::string BmiRainRateCpp::GetGridType(const int grid){
   if (grid == 0) {
       return "scalar";
   }
@@ -67,47 +70,53 @@ std::string BmiRainRateCpp::GetGridType(const int grid){_en()
 }
 
 
-std::vector<std::string> BmiRainRateCpp::GetInputVarNames(){_en()
-  return input_var_names;  
+std::vector<std::string> BmiRainRateCpp::GetInputVarNames(){
+  return this->var_names[this->INPUT]; 
 }
-std::vector<std::string> BmiRainRateCpp::GetOutputVarNames(){_en()
-  return output_var_names;
+std::vector<std::string> BmiRainRateCpp::GetOutputVarNames(){
+  return this->var_names[this->OUTPUT];
 }
-int BmiRainRateCpp::GetInputItemCount(){_en()
-  return input_var_names.size();
+int BmiRainRateCpp::GetInputItemCount(){
+  return this->input_vars.size();
 }
-int BmiRainRateCpp::GetOutputItemCount(){_en()
-  return output_var_names.size();
+int BmiRainRateCpp::GetOutputItemCount(){
+  return this->output_vars.size();
 }
 
-double BmiRainRateCpp::GetStartTime(){_en()
+double BmiRainRateCpp::GetStartTime(){
   return 0.0;
 }
 
-double BmiRainRateCpp::GetTimeStep(){_en()
+double BmiRainRateCpp::GetTimeStep(){
   return this->time_step_size;
 }
 
-std::string BmiRainRateCpp::GetTimeUnits(){_en()
+std::string BmiRainRateCpp::GetTimeUnits(){
   return "s";
 }
 
-void BmiRainRateCpp::GetValue(std::string name, void* dest){_en()
+void BmiRainRateCpp::GetValue(std::string name, void* dest){
   //FIXME inds should be related to var size???
-  int num_elements = this->GetVarNbytes(name)/this->GetVarItemsize(name);
+  StoredVar* var = this->get_var(name);
+  // GetVarNbytes calls GetVarItemSize and get_var()->count
+  // i.e. Nbytes = item_size * item_count
+  // Then, the line following would immediately divide by item_size..
+  // Far more direct to just get the count directly.
+  // int num_elements = this->GetVarNbytes(name)/this->GetVarItemsize(name);
+  int num_elements = var->item_count;
   std::vector<int> indicies(num_elements);
   std::iota (std::begin(indicies), std::end(indicies), 0);
   this->GetValueAtIndices(name, dest, indicies.data(), indicies.size());
 }
 
 void BmiRainRateCpp::GetValueAtIndices(std::string name, void* dest, int* inds, int count){_en()
-  if (count < 1)
+  if (count < 1) {
     throw std::runtime_error(std::string("Illegal count ") + std::to_string(count) + std::string(" provided to SetValueAtIndices(name, dest, inds, count)" SOURCE_LOC));
+  }
+  StoredVar* var = this->get_var(name);
 
-  void *ptr;
-  std::string type;
-  ptr = this->GetValuePtr(name);
-  type = this->GetVarType(name);
+  void *ptr = var->get_ptr();
+  std::string type = var->type;
 
   // Thought about making a small template function to handle these, but you'd
   // have to do one of the casts first anyway...refactor?
@@ -145,26 +154,9 @@ void BmiRainRateCpp::GetValueAtIndices(std::string name, void* dest, int* inds, 
 }
 
 void* BmiRainRateCpp::GetValuePtr(std::string name){_en()
-  auto iter = std::find(this->output_var_names.begin(), this->output_var_names.end(), name);
-  // fprintf(stderr, "output var names has %d elements\n", (int)this->output_var_names.size());
-  // fprintf(stderr, "output vars has %d elements\n", (int)this->output_vars.size());
-  if(iter != this->output_var_names.end()){
-    // fprintf(stderr, "Checking element %d\n", (int)(iter - this->output_var_names.begin()));
-    return this->output_vars[iter - this->output_var_names.begin()]->get_ptr();
-  }
-  iter = std::find(this->input_var_names.begin(), this->input_var_names.end(), name);
-  // fprintf(stderr, "input var names has %d elements\n", (int)this->input_var_names.size());
-  // fprintf(stderr, "input vars has %d elements\n", (int)this->input_vars.size());
-  if(iter != this->input_var_names.end()){
-    // fprintf(stderr, "Checking element %d\n", (int)(iter - this->input_var_names.begin()));
-    return this->input_vars.at(iter - this->input_var_names.begin())->get_ptr();
-  }
-  iter = std::find(this->model_var_names.begin(), this->model_var_names.end(), name);
-  // fprintf(stderr, "model var names has %d elements\n", (int)this->model_var_names.size());
-  // fprintf(stderr, "model vars has %d elements\n", (int)this->model_vars.size());
-  if(iter != this->model_var_names.end()){
-    // fprintf(stderr, "Checking element %d\n", (int)(iter - this->model_var_names.begin()));
-    return this->model_vars[iter - this->model_var_names.begin()]->get_ptr();
+  StoredVar* var = this->get_var(name);
+  if (var != nullptr) {
+    return var->get_ptr();
   }
   throw std::runtime_error("GetValuePtr called for unknown variable: "+name);
 }
@@ -178,18 +170,9 @@ int BmiRainRateCpp::GetVarItemsize(std::string name) {_en()
 }
 
 std::string BmiRainRateCpp::GetVarLocation(std::string name) {_en()
-  auto iter = std::find(this->output_var_names.begin(), this->output_var_names.end(), name);
-  if(iter != this->output_var_names.end()){
-    //WHY??? just return *iter;
-    return this->output_var_locations[iter - this->output_var_names.begin()];
-  }
-  iter = std::find(this->input_var_names.begin(), this->input_var_names.end(), name);
-  if(iter != this->input_var_names.end()){
-    return this->input_var_locations[iter - this->input_var_names.begin()];
-  }
-  iter = std::find(this->model_var_names.begin(), this->model_var_names.end(), name);
-  if(iter != this->model_var_names.end()){
-    return this->model_var_locations[iter - this->model_var_names.begin()];
+  StoredVar* var = this->get_var(name);
+  if (var != nullptr) {
+    return var->location;
   }
   throw std::runtime_error("GetVarLocation called for non-existent variable: "+name+"" SOURCE_LOC);
 }
@@ -201,18 +184,11 @@ int BmiRainRateCpp::GetVarNbytes(std::string name){_en()
   // if a different item_count isn't found below, the call above will have already thrown.
   int item_count = -1; 
 
-  auto iter = std::find(this->output_var_names.begin(), this->output_var_names.end(), name);
-  if(iter != this->output_var_names.end()){
-    item_count = this->output_var_item_count[iter - this->output_var_names.begin()];
+  StoredVar* var = this->get_var(name);
+  if (var != nullptr) {
+    item_count = var->item_count;
   }
-  iter = std::find(this->input_var_names.begin(), this->input_var_names.end(), name);
-  if(iter != this->input_var_names.end()){
-    item_count = this->input_var_item_count[iter - this->input_var_names.begin()];
-  }
-  iter = std::find(this->model_var_names.begin(), this->model_var_names.end(), name);
-  if(iter != this->model_var_names.end()){
-    item_count = this->model_var_item_count[iter - this->model_var_names.begin()];
-  }
+
   if(item_count == -1){
     // This is probably impossible to reach--the same conditions above failing will cause a throw
     // in GetVarItemSize --> GetVarType (called earlier) instead.
@@ -222,35 +198,35 @@ int BmiRainRateCpp::GetVarNbytes(std::string name){_en()
 }
 
 std::string BmiRainRateCpp::GetVarType(std::string name){_en()
-  auto iter = std::find(this->output_var_names.begin(), this->output_var_names.end(), name);
-  if(iter != this->output_var_names.end()){
-    return this->output_var_types[iter - this->output_var_names.begin()];
-  }
-  iter = std::find(this->input_var_names.begin(), this->input_var_names.end(), name);
-  if(iter != this->input_var_names.end()){
-    return this->input_var_types[iter - this->input_var_names.begin()];
-  }
-  iter = std::find(this->model_var_names.begin(), this->model_var_names.end(), name);
-  if(iter != this->model_var_names.end()){
-    return this->model_var_types[iter - this->model_var_names.begin()];
+  StoredVar* var = this->get_var(name);
+  if (var != nullptr) {
+    return var->type;
   }
   throw std::runtime_error("GetVarType called for non-existent variable: "+name+"" SOURCE_LOC );
 }
 
 std::string BmiRainRateCpp::GetVarUnits(std::string name){_en()
-  auto iter = std::find(this->output_var_names.begin(), this->output_var_names.end(), name);
-  if(iter != this->output_var_names.end()){
-    return this->output_var_units[iter - this->output_var_names.begin()];
-  }
-  iter = std::find(this->input_var_names.begin(), this->input_var_names.end(), name);
-  if(iter != this->input_var_names.end()){
-    return this->input_var_units[iter - this->input_var_names.begin()];
-  }
-  iter = std::find(this->model_var_names.begin(), this->model_var_names.end(), name);
-  if(iter != this->model_var_names.end()){
-    return this->model_var_types[iter - this->model_var_names.begin()];
+  StoredVar* var = this->get_var(name);
+  if (var != nullptr) {
+    return var->units;
   }
   throw std::runtime_error("GetVarUnits called for non-existent variable: "+name+"" SOURCE_LOC);
+}
+
+StoredVar* BmiRainRateCpp::get_var(std::string name){_en()
+  for (size_t i = 0; i < 3; i++) {
+    std::vector<StoredVar*> vars = all_vars[i];
+    for (size_t j = 0; j < vars.size(); j++) {
+      if (vars[j]->name == name) {
+        return vars[j];
+      }
+    }
+  }
+  return nullptr;
+}
+
+void BmiRainRateCpp::finalize_vars(){
+
 }
 
 void BmiRainRateCpp::Initialize(std::string file){_en()
@@ -283,138 +259,33 @@ void BmiRainRateCpp::Initialize(std::string file){_en()
   // "partial_calc__TMP_2maboveground_apply_rho",
   // "partial_calc__APCP_surface_shifted",
   // "partial_calc__shifted_div_rho"
-  std::vector<std::string> partial_output_var_names = {
-    "partial_calc__TMP_2maboveground_apply_rho", // K -> kg m-3
-    "partial_calc__APCP_surface_shifted", // kg m-2
-    "partial_calc__shifted_div_rho" // m (before division by time step size)
+  VarList partial_output_vars = {
+    new StoredVar(0.0, "partial_calc__TMP_2maboveground_apply_rho", "double", "kg m-3", "node", 1, 0),
+    new StoredVar(0.0, "partial_calc__APCP_surface_shifted", "double", "kg m-2", "node", 1, 0),
+    new StoredVar(0.0, "partial_calc__shifted_div_rho", "double", "m", "node", 1, 0)
   };
-  std::vector<std::string> partial_output_var_types = {
-    "double",
-    "double",
-    "double"
-  };
-  std::vector<std::string> partial_output_var_units = {
-    "kg m-3",
-    "kg m-2",
-    "m"
-  };
-  std::vector<std::string> partial_output_var_locations = {
-    "node",
-    "node",
-    "node"
-  };
-  std::vector<int> partial_output_var_item_count = {
-    1,
-    1,
-    1
-  };
-  std::vector<int> partial_output_var_grids = {
-    0,
-    0,
-    0
-  };
-  this->output_var_names.insert(this->output_var_names.end(), partial_output_var_names.begin(), partial_output_var_names.end());
-  this->output_var_types.insert(this->output_var_types.end(), partial_output_var_types.begin(), partial_output_var_types.end());
-  this->output_var_units.insert(this->output_var_units.end(), partial_output_var_units.begin(), partial_output_var_units.end());
-  this->output_var_locations.insert(this->output_var_locations.end(), partial_output_var_locations.begin(), partial_output_var_locations.end());
-  this->output_var_item_count.insert(this->output_var_item_count.end(), partial_output_var_item_count.begin(), partial_output_var_item_count.end());
-  this->output_var_grids.insert(this->output_var_grids.end(), partial_output_var_grids.begin(), partial_output_var_grids.end());
+  this->output_vars.extend(partial_output_vars);
   #endif
 
   #ifdef INVERSION
   // Inversion takes precip_rate and outputs APCP_surface
-  std::vector<std::string> inversion_input_var_names = {
-    "precip_rate"
+  VarList inversion_input_vars = {
+    new StoredVar(0.0, "precip_rate", "double", "m/s", "node", 1, 0)
   };
-  std::vector<std::string> inversion_input_var_types = {
-    "double"
-  };
-  std::vector<std::string> inversion_input_var_units = {
-    "m/s"
-  };
-  std::vector<std::string> inversion_input_var_locations = {
-    "node"
-  };
-  std::vector<int> inversion_input_var_item_count = {
-    1
-  };
-  std::vector<int> inversion_input_var_grids = {
-    0
-  };
-  this->input_var_names.insert(this->input_var_names.end(), inversion_input_var_names.begin(), inversion_input_var_names.end());
-  this->input_var_types.insert(this->input_var_types.end(), inversion_input_var_types.begin(), inversion_input_var_types.end());
-  this->input_var_units.insert(this->input_var_units.end(), inversion_input_var_units.begin(), inversion_input_var_units.end());
-  this->input_var_locations.insert(this->input_var_locations.end(), inversion_input_var_locations.begin(), inversion_input_var_locations.end());
-  this->input_var_item_count.insert(this->input_var_item_count.end(), inversion_input_var_item_count.begin(), inversion_input_var_item_count.end());
-  this->input_var_grids.insert(this->input_var_grids.end(), inversion_input_var_grids.begin(), inversion_input_var_grids.end());
-
+  this->input_vars.extend(inversion_input_vars);
   // Where standard stores APCP_surface, inversion stores precip_rate
-  std::vector<std::string> inversion_model_var_names = {"precip_rate_store", "TMP_2aboveground_store"};
-  std::vector<std::string> inversion_model_var_types = {"double", "double"};
-  std::vector<std::string> inversion_model_var_units = {"kg m-2", "K"};
-  std::vector<std::string> inversion_model_var_locations = {"node", "node"};
-  std::vector<int> inversion_model_var_item_count = {1, 1};
-  std::vector<int> inversion_model_var_grids = {0, 0};
-  this->model_var_names.insert(this->model_var_names.end(), inversion_model_var_names.begin(), inversion_model_var_names.end());
-  this->model_var_types.insert(this->model_var_types.end(), inversion_model_var_types.begin(), inversion_model_var_types.end());
-  this->model_var_units.insert(this->model_var_units.end(), inversion_model_var_units.begin(), inversion_model_var_units.end());
-  this->model_var_locations.insert(this->model_var_locations.end(), inversion_model_var_locations.begin(), inversion_model_var_locations.end());
-  this->model_var_item_count.insert(this->model_var_item_count.end(), inversion_model_var_item_count.begin(), inversion_model_var_item_count.end());
-  this->model_var_grids.insert(this->model_var_grids.end(), inversion_model_var_grids.begin(), inversion_model_var_grids.end());
+  VarList inversion_model_vars = {
+    new StoredVar(0.0, "precip_rate_store", "double", "kg m-2", "node", 1, 0),
+    new StoredVar(0.0, "TMP_2aboveground_store", "double", "K", "node", 1, 0)
+  };
+  this->model_vars.extend(inversion_model_vars);
 
   // Where standard outputs precip_rate as atmosphere_water__precipitation_rate, inversion outputs APCP_surface_shifted
-  std::vector<std::string> inversion_output_var_names = {"APCP_surface_shifted"};
-  std::vector<std::string> inversion_output_var_types = {"double"};
-  std::vector<std::string> inversion_output_var_units = {"kg m-2"};
-  std::vector<std::string> inversion_output_var_locations = {"node"};
-  std::vector<int> inversion_output_var_item_count = {1};
-  std::vector<int> inversion_output_var_grids = {0};
-  this->output_var_names.insert(this->output_var_names.end(), inversion_output_var_names.begin(), inversion_output_var_names.end());
-  this->output_var_types.insert(this->output_var_types.end(), inversion_output_var_types.begin(), inversion_output_var_types.end());
-  this->output_var_units.insert(this->output_var_units.end(), inversion_output_var_units.begin(), inversion_output_var_units.end());
-  this->output_var_locations.insert(this->output_var_locations.end(), inversion_output_var_locations.begin(), inversion_output_var_locations.end());
-  this->output_var_item_count.insert(this->output_var_item_count.end(), inversion_output_var_item_count.begin(), inversion_output_var_item_count.end());
-  this->output_var_grids.insert(this->output_var_grids.end(), inversion_output_var_grids.begin(), inversion_output_var_grids.end());
+  VarList inversion_output_vars = {
+    new StoredVar(0.0, "APCP_surface_shifted", "double", "kg m-2", "node", 1, 0)
+  };
+  this->output_vars.extend(inversion_output_vars);
   #endif
-
-
-
-  // Initialize the output variables
-  for (size_t i = 0; i < this->output_var_names.size(); i++) {
-    std::string name = this->output_var_names[i];
-    std::string type = this->output_var_types[i];
-    std::string units = this->output_var_units[i];
-    std::string location = this->output_var_locations[i];
-    int item_count = this->output_var_item_count[i];
-    int grid = this->output_var_grids[i];
-    StoredVar<double> *var = new StoredVar<double>(0.0, name, type, units, location, item_count, grid);
-    this->output_vars.push_back(std::move(var));
-  }
-
-  // Initialize the input variables
-  for (size_t i = 0; i < this->input_var_names.size(); i++) {
-    std::string name = this->input_var_names[i];
-    std::string type = this->input_var_types[i];
-    std::string units = this->input_var_units[i];
-    std::string location = this->input_var_locations[i];
-    int item_count = this->input_var_item_count[i];
-    int grid = this->input_var_grids[i];
-    StoredVar<double> *var = new StoredVar<double>(0.0, name, type, units, location, item_count, grid);
-    this->input_vars.push_back(std::move(var));
-  }
-
-  // Initialize the model variables
-  for (size_t i = 0; i < this->model_var_names.size(); i++) {
-    std::string name = this->model_var_names[i];
-    std::string type = this->model_var_types[i];
-    std::string units = this->model_var_units[i];
-    std::string location = this->model_var_locations[i];
-    int item_count = this->model_var_item_count[i];
-    int grid = this->model_var_grids[i];
-    StoredVar<double> *var = new StoredVar<double>(0.0, name, type, units, location, item_count, grid);
-    this->model_vars.push_back(std::move(var));
-  }
-
 }
 
 double BmiRainRateCpp::get_input_var_value(int index) {
@@ -488,49 +359,6 @@ void BmiRainRateCpp::UpdateUntil(double future_time){_en()
 
 void BmiRainRateCpp::Finalize(){_en()
   return;
-}
-
-int BmiRainRateCpp::GetGridEdgeCount(const int grid){_en()
-  throw std::logic_error("Not implemented." SOURCE_LOC);
-}
-int BmiRainRateCpp::GetGridFaceCount(const int grid){_en()
-  throw std::logic_error("Not implemented." SOURCE_LOC);
-}
-void BmiRainRateCpp::GetGridEdgeNodes(const int grid, int* edge_nodes){_en()
-  throw std::logic_error("Not implemented." SOURCE_LOC);
-}
-void BmiRainRateCpp::GetGridFaceEdges(const int grid, int* face_edges){_en()
-  throw std::logic_error("Not implemented." SOURCE_LOC);
-}
-void BmiRainRateCpp::GetGridFaceNodes(const int grid, int* face_nodes){_en()
-  throw std::logic_error("Not implemented." SOURCE_LOC);
-}
-int BmiRainRateCpp::GetGridNodeCount(const int grid){_en()
-  throw std::logic_error("Not implemented." SOURCE_LOC);
-}
-void BmiRainRateCpp::GetGridNodesPerFace(const int grid, int* nodes_per_face){_en()
-  throw std::logic_error("Not implemented." SOURCE_LOC);
-}
-void BmiRainRateCpp::GetGridOrigin(const int grid, double* origin){_en()
-  throw std::logic_error("Not implemented." SOURCE_LOC);
-}
-void BmiRainRateCpp::GetGridShape(const int grid, int* shape){_en()
-  throw std::logic_error("Not implemented." SOURCE_LOC);
-}
-void BmiRainRateCpp::GetGridSpacing(const int grid, double* spacing){_en()
-  throw std::logic_error("Not implemented." SOURCE_LOC);
-}
-void BmiRainRateCpp::GetGridX(const int grid, double* x){_en()
-  throw std::logic_error("Not implemented." SOURCE_LOC);
-}
-void BmiRainRateCpp::GetGridY(const int grid, double* y){_en()
-  throw std::logic_error("Not implemented." SOURCE_LOC);
-}
-void BmiRainRateCpp::GetGridZ(const int grid, double* z){_en()
-  throw std::logic_error("Not implemented." SOURCE_LOC);
-}
-int BmiRainRateCpp::GetVarGrid(std::string name){_en()
-  throw std::logic_error("Not implemented." SOURCE_LOC);
 }
 
 void BmiRainRateCpp::read_init_config(std::string config_file)
@@ -673,10 +501,10 @@ double BmiRainRateCpp::calculate_surface_water_change()
     // Calculate change in surface water between time steps
     // python ver: return current_amt - last_amt
     // # oops! it is supposed to be last_amt directly, rather than doing a subtraction
-    StoredVar<double>* input_var_0 = this->input_vars[0];
-    StoredVar<double>* input_var_1 = this->input_vars[1];
-    StoredVar<double>* output_var_0 = this->output_vars[0];
-    StoredVar<double>* model_var_0 = this->model_vars[0];
+    StoredVar* input_var_0 = this->input_vars[0];
+    StoredVar* input_var_1 = this->input_vars[1];
+    StoredVar* output_var_0 = this->output_vars[0];
+    StoredVar* model_var_0 = this->model_vars[0];
     return model_var_0->get_value();
 }
 
@@ -718,25 +546,25 @@ int lastprint = 0;
 
 void BmiRainRateCpp::run(long dt)
 {  _en()
-    StoredVar<double>* input_var_0 = this->input_vars[0]; // Surface water amount
-    StoredVar<double>* input_var_1 = this->input_vars[1]; // Temperature
-    StoredVar<double>* output_var_0 = this->output_vars[0]; // Rain rate
-    StoredVar<double>* model_var_0 = this->model_vars[0]; // Surface water amount
+    StoredVar* input_var_0 = this->input_vars[0]; // Surface water amount
+    StoredVar* input_var_1 = this->input_vars[1]; // Temperature
+    StoredVar* output_var_0 = this->output_vars[0]; // Rain rate
+    StoredVar* model_var_0 = this->model_vars[0]; // Surface water amount
     int output_offset = 1;
     int input_offset = 2;
     int model_offset = 1;
     #ifdef PARTIAL_OUTPUTS
     int partial_offset = output_offset + 1;
-    StoredVar<double>* partial_var_0 = this->output_vars[partial_offset]; // partial_calc__TMP_2maboveground_apply_rho
-    StoredVar<double>* partial_var_1 = this->output_vars[partial_offset + 1]; // partial_calc__APCP_surface_shifted
-    StoredVar<double>* partial_var_2 = this->output_vars[partial_offset + 2]; // partial_calc__shifted_div_rho
+    StoredVar* partial_var_0 = this->output_vars[partial_offset]; // partial_calc__TMP_2maboveground_apply_rho
+    StoredVar* partial_var_1 = this->output_vars[partial_offset + 1]; // partial_calc__APCP_surface_shifted
+    StoredVar* partial_var_2 = this->output_vars[partial_offset + 2]; // partial_calc__shifted_div_rho
     output_offset += 3;
     #endif
     #ifdef INVERSION
-    StoredVar<double>* inversion_input_var_0 = this->input_vars[input_offset]; // precip_rate
-    StoredVar<double>* inversion_model_var_0 = this->model_vars[model_offset]; // precip_rate_store
-    StoredVar<double>* inversion_model_var_1 = this->model_vars[model_offset + 1]; // TMP_2aboveground_store
-    StoredVar<double>* inversion_output_var_0 = this->output_vars[output_offset]; // APCP_surface_shifted
+    StoredVar* inversion_input_var_0 = this->input_vars[input_offset]; // precip_rate
+    StoredVar* inversion_model_var_0 = this->model_vars[model_offset]; // precip_rate_store
+    StoredVar* inversion_model_var_1 = this->model_vars[model_offset + 1]; // TMP_2aboveground_store
+    StoredVar* inversion_output_var_0 = this->output_vars[output_offset]; // APCP_surface_shifted
     input_offset += 1;
     model_offset += 2;
     output_offset += 1;
@@ -809,3 +637,5 @@ void BmiRainRateCpp::run(long dt)
     // Update time
     this->current_model_time += dt;
 }
+
+#endif
