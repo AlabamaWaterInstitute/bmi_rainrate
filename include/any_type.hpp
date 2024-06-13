@@ -12,21 +12,25 @@ class AnyType {
         std::string type;
         AnyType() {}
         template <typename T>
-        AnyType(T value) {
+        AnyType(T value) {/*_lnf()*/
             this->var = new T(value);
             this->type = typeid(T).name();
         }
-        AnyType(void* value, std::string type) {
+        AnyType(void* value, std::string type) {/*_lnf()*/
             this->var = value;
             this->type = type;
         }
-        AnyType(const AnyType& other) {
+        AnyType(const AnyType& other) {/*_lnf()*/
+            if (&other == nullptr) {/*_lnf()*/
+                throw std::runtime_error("Null pointer");
+            }
             this->var = other.var;
             this->type = other.type;
+            // _ex()
         }
-        ~AnyType() {
-            // if (this->var) {
-            //     switch (this->type[0]) {
+        ~AnyType() {/*_lnf()*/
+            // if (this->var) {/*_lnf()*/
+            //     switch (this->type[0]) {/*_lnf()*/
             //         case 'i':
             //             delete static_cast<int*>(this->var);
             //             break;
@@ -50,41 +54,48 @@ class AnyType {
             //     }
             // }
         }
-        void* get_ptr() {
+        void* get_ptr() {/*_lnf()*/
             return std::move(this->var);
         }
         template <typename T>
-        T* get_var() {
+        T* get_var() {/*_lnf()*/
             return static_cast<T*>(this->var);
         }
         template <typename T>
-        T get_value() {
+        T get_value() {/*_lnf()*/
             return *static_cast<T*>(this->var);
         }
         template <typename T>
-        void set_value(T value) {
+        void set_value(T value) {/*_lnf()*/
             *static_cast<T*>(this->var) = value;
         }
-        operator bool() {
+        operator bool() {/*_lnf()*/
             return this->var != nullptr;
         }
-        operator void*() {
+        operator void*() {/*_lnf()*/
             return this->var;
         }
-        AnyType operator = (const AnyType& other) {
+        AnyType operator = (const AnyType& other) {/*_lnf()*/
             this->var = other.var;
             return *this;
         }
-        AnyType* operator = (AnyType* other) {
+        AnyType* operator = (AnyType* other) {/*_lnf()*/
             this->var = other->var;
             return this;
         }
         template <typename T>
-        operator T() {
+        operator T() {/*_lnf()*/
+            if (!this->safe_cast<T>()) {/*_lnf()*/
+                throw std::runtime_error("Invalid cast: " + this->type + " to " + typeid(T).name());
+            }
             return *static_cast<T*>(this->var);
         }
         template <typename T>
-        bool safe_cast(const T& value) {
+        bool safe_cast(const T& value) {/*_lnf()*/
+            return this->type == typeid(T).name();
+        }
+        template <typename T>
+        bool safe_cast() {/*_lnf()*/
             return this->type == typeid(T).name();
         }
     private:

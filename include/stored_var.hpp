@@ -27,10 +27,10 @@ struct StoredVar {
     ~StoredVar() {
         delete this->var;
     }
-    void* get_ptr() { return std::move(this->var); }
-    T* get_var() { return this->var; }
-    T get_value() { return *this->var; }
-    void set_value(T value) { *this->var = value; }
+    void* get_ptr() {/*_lnf()*/ return std::move(this->var); }
+    T* get_var() {/*_lnf()*/ return this->var; }
+    T get_value() {/*_lnf()*/ return *this->var; }
+    void set_value(T value) {/*_lnf()*/ *this->var = value; }
 };
 
 #else
@@ -45,6 +45,8 @@ struct StoredVar {
     std::string location;
     int item_count;
     int grid;
+    std::string setup_info;
+    // #define _si() fprintf(stderr, "%s\n", this->setup_info.c_str());
     StoredVar(AnyType* var, std::string name, std::string type, std::string units, std::string location, int item_count, int grid):
         var(var), name(name), type(type), units(units), location(location), item_count(item_count), grid(grid) {}
     StoredVar(AnyType var, std::string name, std::string type, std::string units, std::string location, int item_count, int grid):
@@ -54,14 +56,22 @@ struct StoredVar {
     ~StoredVar() {
         delete this->var;
     }
-    void* get_ptr() { return std::move(this->var); }
-    AnyType* get_var() { return this->var; }
-    AnyType get_value() { return *this->var; }
-    void set_value(AnyType value) { *this->var = value; }
+    StoredVar* setup(std::string setup_info) {
+        this->setup_info = setup_info;
+        return this;
+    }
+    void* get_ptr() {/*_lnf() _si()*/ return this->var->get_ptr(); }
     template <typename T>
-    T* get_var() { return this->var->get_var<T>(); }
+    T get_value() {/*_lnf() _si()*/ return this->var->get_value<T>(); }
     template <typename T>
-    void set_value(T value) { this->var->set_value(value); }
+    T* get_var() {/*_lnf() _si()*/ return this->var->get_var<T>(); }
+    template <typename T>
+    void set_value(T value) {/*_lnf() _si()*/ this->var->set_value(value); }
+
+    AnyType* get_var() {/*_lnf() _si()*/ return this->var; }
+    AnyType get_value() {/*_lnf() _si()*/ return *this->var; }
+    void set_value(AnyType value) {/*_lnf() _si()*/ *this->var = value; }
+    
 };
 #endif
 

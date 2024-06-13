@@ -94,6 +94,8 @@ class BmiRainRateCpp : public bmi::Bmi {
         virtual void GetGridFaceNodes(const int grid, int *face_nodes);
         virtual void GetGridNodesPerFace(const int grid, int *nodes_per_face);
 
+        std::string alert_unknown_variable(std::string name);
+
 
 
     private:
@@ -116,17 +118,17 @@ class BmiRainRateCpp : public bmi::Bmi {
 
         // Access vectors
         VarList input_vars = {
-            new StoredVar(0.0, "APCP_surface", "double", "kg m-2", "node", 1, 1),
-            new StoredVar(0.0, "TMP_2maboveground", "double", "K", "node", 1, 1)
+            (new StoredVar(0.0, "APCP_surface", "double", "kg m-2", "node", 1, 1))->setup(_mk_setup_nofunc_info()),
+            (new StoredVar(0.0, "TMP_2maboveground", "double", "K", "node", 1, 1))->setup(_mk_setup_nofunc_info())
         };
         VarList output_vars = {
-            new StoredVar(0.0, "atmosphere_water__precipitation_rate", "double", "m s-1", "node", 1, 1)
+            (new StoredVar(0.0, "atmosphere_water__precipitation_rate", "double", "m s-1", "node", 1, 1))->setup(_mk_setup_nofunc_info())
         };
         VarList model_vars = {
-            new StoredVar(0.0, "surface_water__last_value", "double", "kg m-2", "node", 1, 1)
+            (new StoredVar(0.0, "surface_water__last_value", "double", "kg m-2", "node", 1, 1))->setup(_mk_setup_nofunc_info())
         };
 
-        std::vector<VarList> all_vars = {input_vars, output_vars, model_vars};
+        std::vector<VarList*> all_vars = {&input_vars, &output_vars, &model_vars};
 
         StoredVar* get_var(std::string name);
 
@@ -234,20 +236,14 @@ extern "C"
     *
     * @return A pointer to the newly allocated instance.
     */
-	inline BmiRainRateCpp *bmi_model_create()
-	{
-		return new BmiRainRateCpp();
-	}
+	BmiRainRateCpp *bmi_model_create();
 
     /**
      * @brief Destroy/free an instance created with @see bmi_model_create
      * 
      * @param ptr 
      */
-	inline void bmi_model_destroy(BmiRainRateCpp *ptr)
-	{
-		delete ptr;
-	}
+	void bmi_model_destroy(BmiRainRateCpp *ptr);
 }
 
 #endif //BMI_RAINRATE_CPP_H
