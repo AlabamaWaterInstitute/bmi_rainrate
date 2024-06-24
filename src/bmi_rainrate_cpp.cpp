@@ -112,6 +112,7 @@ std::string BmiRainRateCpp::alert_unknown_variable(std::string name) {/*_ln()*/
 }
 
 void BmiRainRateCpp::GetValue(std::string name, void* dest) {/*_ln()*/
+  var_stats_getvalue(name);
   //FIXME inds should be related to var size???
   StoredVar* var = this->get_var(name);
   // GetVarNbytes calls GetVarItemSize and get_var()->count
@@ -125,7 +126,8 @@ void BmiRainRateCpp::GetValue(std::string name, void* dest) {/*_ln()*/
   this->GetValueAtIndices(name, dest, indicies.data(), indicies.size());
 }
 
-void BmiRainRateCpp::GetValueAtIndices(std::string name, void* dest, int* inds, int count){/*en()*/
+void BmiRainRateCpp::GetValueAtIndices(std::string name, void* dest, int* inds, int count){/*_en()*/
+var_stats_getvalue(name);
   if (count < 1) {/*_ln()*/
     throw std::runtime_error(std::string("Illegal count ") + std::to_string(count) + std::string(" provided to SetValueAtIndices(name, dest, inds, count)" SOURCE_LOC));
   }
@@ -169,7 +171,8 @@ void BmiRainRateCpp::GetValueAtIndices(std::string name, void* dest, int* inds, 
 
 }
 
-void* BmiRainRateCpp::GetValuePtr(std::string name){/*en()*/
+void* BmiRainRateCpp::GetValuePtr(std::string name){/*_en()*/
+  var_stats_getvalue(name);
   StoredVar* var = this->get_var(name);
   if (var != nullptr) {/*_ln()*/
     return var->get_ptr();
@@ -179,7 +182,7 @@ void* BmiRainRateCpp::GetValuePtr(std::string name){/*en()*/
   throw std::runtime_error(msg);
 }
 
-int BmiRainRateCpp::GetVarItemsize(std::string name) {/*en()*/
+int BmiRainRateCpp::GetVarItemsize(std::string name) {/*_en()*/
   std::map<std::string,int>::const_iterator iter = this->type_sizes.find(this->GetVarType(name));
   if(iter != this->type_sizes.end()) {/*_ln()*/
     return iter->second;
@@ -187,7 +190,7 @@ int BmiRainRateCpp::GetVarItemsize(std::string name) {/*en()*/
   throw std::runtime_error("Item \""+name+"\" has illegal type \""+(this->GetVarType(name))+"\"!" SOURCE_LOC);
 }
 
-std::string BmiRainRateCpp::GetVarLocation(std::string name) {/*en()*/
+std::string BmiRainRateCpp::GetVarLocation(std::string name) {/*_en()*/
   StoredVar* var = this->get_var(name);
   if (var != nullptr) {/*_ln()*/
     return var->location;
@@ -197,7 +200,7 @@ std::string BmiRainRateCpp::GetVarLocation(std::string name) {/*en()*/
   throw std::runtime_error(msg);
 }
 
-int BmiRainRateCpp::GetVarNbytes(std::string name){/*en()*/
+int BmiRainRateCpp::GetVarNbytes(std::string name){/*_en()*/
   int item_size = this->GetVarItemsize(name);
 
   // this will never actually get used, but mimicing the C version...
@@ -219,7 +222,7 @@ int BmiRainRateCpp::GetVarNbytes(std::string name){/*en()*/
   return item_size * item_count;
 }
 
-std::string BmiRainRateCpp::GetVarType(std::string name){/*en()*/
+std::string BmiRainRateCpp::GetVarType(std::string name){/*_en()*/
   StoredVar* var = this->get_var(name);
   if (var != nullptr) {/*_ln()*/
     return var->type;
@@ -229,7 +232,7 @@ std::string BmiRainRateCpp::GetVarType(std::string name){/*en()*/
   throw std::runtime_error(msg);
 }
 
-std::string BmiRainRateCpp::GetVarUnits(std::string name){/*en()*/
+std::string BmiRainRateCpp::GetVarUnits(std::string name){/*_en()*/
   StoredVar* var = this->get_var(name);
   if (var != nullptr) {/*_ln()*/
     return var->units;
@@ -239,7 +242,7 @@ std::string BmiRainRateCpp::GetVarUnits(std::string name){/*en()*/
   throw std::runtime_error(msg);
 }
 
-StoredVar* BmiRainRateCpp::get_var(std::string name){/*en()*/
+StoredVar* BmiRainRateCpp::get_var(std::string name){/*_en()*/
   for (size_t i = 0; i < 3; i++) {/*_ln()*/
     std::vector<StoredVar*> vars = *all_vars[i];
     for (size_t j = 0; j < vars.size(); j++) {/*_ln()*/
@@ -249,6 +252,88 @@ StoredVar* BmiRainRateCpp::get_var(std::string name){/*en()*/
     }
   }
   return nullptr;
+}
+
+BmiRainRateCpp::VarType BmiRainRateCpp::get_VarType(std::string name) {/*_en()*/
+  for (size_t i = 0; i < 3; i++) {/*_ln()*/
+    std::vector<StoredVar*> vars = *all_vars[i];
+    for (size_t j = 0; j < vars.size(); j++) {/*_ln()*/
+      if (vars[j]->name == name) {/*_ln()*/
+        return (VarType)i;
+      }
+    }
+  }
+  throw std::runtime_error("Variable not found: "+name);
+}
+
+BmiRainRateCpp::RunStage BmiRainRateCpp::get_runtime_stage() {/*_en()*/
+  RunStage stage = RunStage::RUN;
+  if (this->current_time_step == 0) {/*_ln()*/
+    stage = RunStage::INIT;
+  }
+  if (this->current_time_step == this->num_time_steps) {/*_ln()*/
+    stage = RunStage::FINALIZE;
+  }
+  return stage;
+}
+
+std::string BmiRainRateCpp::check_runtime_stage() {/*_en()*/
+  RunStage stage = this->get_runtime_stage();
+  std::string stage_str = this->translate_run_stage[stage];
+  return stage_str;
+}
+
+void BmiRainRateCpp::add_model_param(std::string name) {/*_en()*/
+  
+}
+
+bool BmiRainRateCpp::handle_model_param(std::string name) {/*_en()*/
+  
+  // Return true if handled
+  return true;
+}
+
+std::string BmiRainRateCpp::process_var_name(std::string name) {/*_en()*/
+  return name;
+}
+
+void BmiRainRateCpp::register_var_metadata(StoredVar* var, VarType type) {/*_en()*/
+  VarList* vars = this->all_vars[type];
+  size_t ind = -1;
+  for (size_t i = 0; i < vars->size(); i++) {/*_ln()*/
+    if (vars->at(i)->name == var->name) {/*_ln()*/
+      ind = i;
+      break;
+    }
+  }
+  if (ind == -1) {/*_ln()*/
+    vars->push_back(var);
+  }
+  std::vector<std::string>* names = &this->var_names[type];
+  std::vector<std::string>* types = &this->var_types[type];
+  std::vector<std::string>* units = &this->var_units[type];
+  std::vector<std::string>* locations = &this->var_locations[type];
+  std::vector<int>* item_counts = &this->var_item_count[type];
+  std::vector<int>* grids = &this->var_grids[type];
+
+  if (names->size() <= ind) {
+    names->push_back(var->name);
+  }
+  if (types->size() <= ind) {
+    types->push_back(var->type);
+  }
+  if (units->size() <= ind) {
+    units->push_back(var->units);
+  }
+  if (locations->size() <= ind) {
+    locations->push_back(var->location);
+  }
+  if (item_counts->size() <= ind) {
+    item_counts->push_back(var->item_count);
+  }
+  if (grids->size() <= ind) {
+    grids->push_back(var->grid);
+  }
 }
 
 void BmiRainRateCpp::finalize_vars() {/*_ln()*/
@@ -269,24 +354,71 @@ void BmiRainRateCpp::finalize_vars() {/*_ln()*/
     std::vector<std::string> locations;
     std::vector<int> item_counts;
     std::vector<int> grids;
-    for (size_t j = 0; j < vars.size(); j++) {/*_ln()*/
-      names.push_back(vars[j]->name);
-      types.push_back(vars[j]->type);
-      units.push_back(vars[j]->units);
-      locations.push_back(vars[j]->location);
-      item_counts.push_back(vars[j]->item_count);
-      grids.push_back(vars[j]->grid);
-    }
+    // for (size_t j = 0; j < vars.size(); j++) {/*_ln()*/
+    //   names.push_back(vars[j]->name);
+    //   types.push_back(vars[j]->type);
+    //   units.push_back(vars[j]->units);
+    //   locations.push_back(vars[j]->location);
+    //   item_counts.push_back(vars[j]->item_count);
+    //   grids.push_back(vars[j]->grid);
+    // }
     this->var_names.push_back(names);
     this->var_types.push_back(types);
     this->var_units.push_back(units);
     this->var_locations.push_back(locations);
     this->var_item_count.push_back(item_counts);
     this->var_grids.push_back(grids);
+
+    for (size_t j = 0; j < vars.size(); j++) {/*_ln()*/
+      this->register_var_metadata(vars[j], (VarType)i);
+    }
   }
 }
 
-void BmiRainRateCpp::Initialize(std::string file){/*en()*/
+ShiftQueue* BmiRainRateCpp::get_shift_queue(std::string name) {/*_en()*/
+  for (size_t i = 0; i < this->shift_queues.size(); i++) {/*_ln()*/
+    if (this->shift_queues[i]->name == name) {/*_ln()*/
+      return this->shift_queues[i];
+    }
+  }
+  return nullptr;
+}
+
+void BmiRainRateCpp::add_shift_queue(std::string name, AnyType init_val, int max_size) {/*_en()*/
+  ShiftQueue* sq = new ShiftQueue(name, init_val, max_size);
+  this->shift_queues.push_back(sq);
+}
+
+BmiRainRateCpp::var_stats* BmiRainRateCpp::get_var_stats(std::string name) {/*_en()*/
+  for (size_t i = 0; i < this->var_stats_list.size(); i++) {/*_ln()*/
+    if (this->var_stats_list[i]->name == name) {/*_ln()*/
+      return this->var_stats_list[i];
+    }
+  }
+  var_stats* stats = new var_stats(name);
+  this->var_stats_list.push_back(stats);
+  return stats;
+}
+
+void BmiRainRateCpp::var_stats_setvalue(std::string name) {/*_en()*/
+  var_stats* stats = this->get_var_stats(name);
+  int current_time_step = this->current_time_step;
+  stats->add_setvalue(current_time_step);
+}
+
+void BmiRainRateCpp::var_stats_getvalue(std::string name) {/*_en()*/
+  var_stats* stats = this->get_var_stats(name);
+  int current_time_step = this->current_time_step;
+  stats->add_getvalue(current_time_step);
+}
+
+void BmiRainRateCpp::print_var_stats() {/*_en()*/
+  for (size_t i = 0; i < this->var_stats_list.size(); i++) {/*_ln()*/
+    std::cout << (std::string)*this->var_stats_list[i] << std::endl;
+  }
+}
+
+void BmiRainRateCpp::Initialize(std::string file){/*_en()*/
   //_log("Initializing...");
   if (file == "")
     throw std::runtime_error("No configuration file path provided.");
@@ -343,6 +475,12 @@ void BmiRainRateCpp::Initialize(std::string file){/*en()*/
   };
   this->output_vars.extend(inversion_output_vars);
   #endif
+
+  VarList final_model_vars = {
+    (new StoredVar(-1, "TMP_time_offset", "int", "s", "node", 1, 1))->setup(_mk_setup_nofunc_info()),
+    (new StoredVar(-1, "precip_rate_time_offset", "int", "s", "node", 1, 1))->setup(_mk_setup_nofunc_info())
+  };
+  this->model_vars.extend(final_model_vars);
   /*_ln()*/
   this->finalize_vars();
 }
@@ -368,7 +506,8 @@ double BmiRainRateCpp::get_model_var_value(int index) {/*_ln()*/
     return this->model_vars[index]->get_value();
 }
 
-void BmiRainRateCpp::SetValueAtIndices(std::string name, int* inds, int len, void* src){/*en()*/
+void BmiRainRateCpp::SetValueAtIndices(std::string name, int* inds, int len, void* src){/*_en()*/
+  var_stats_setvalue(name);
   if (len < 1)
     throw std::runtime_error(std::string("Illegal count ") + std::to_string(len) + std::string(" provided to SetValueAtIndices(name, dest, inds, count)" SOURCE_LOC));
 
@@ -399,37 +538,71 @@ void BmiRainRateCpp::SetValueAtIndices(std::string name, int* inds, int len, voi
   }
 }
 
-void BmiRainRateCpp::SetValue(std::string name, void* src){/*en()*///_log(name.c_str());
+void BmiRainRateCpp::SetValue(std::string name, void* src){/*_en()*///_log(name.c_str());
+  var_stats_setvalue(name);
   StoredVar* var = this->get_var(name);
   if (var == nullptr) {/*_ln()*/
     throw std::runtime_error("SetValue called for unknown variable: "+name);
   }
+  // std::string prev = var->get_value();
   memcpy(var->get_ptr(), src, this->GetVarNbytes(name));
+  // std::string post = var->get_value();
+  // if (prev != post) {/*_ln()*/
+  //   std::cout << "SetValue changed " << name << " from " << prev << " to " << post << std::endl;
+  // }
+  
 }
 
-void BmiRainRateCpp::Update(){/*en()*/
+void BmiRainRateCpp::Update(){/*_en()*/
   this->UpdateUntil(this->current_model_time + this->time_step_size);
 }
 
-void BmiRainRateCpp::UpdateUntil(double future_time){/*en()*/
+void BmiRainRateCpp::UpdateUntil(double future_time){/*_en()*/
   this->run((long)(future_time - this->current_model_time));
   if (this->current_model_time != future_time)
     this->current_model_time = future_time;
 }
 
-void BmiRainRateCpp::Finalize(){/*en()*/
+void BmiRainRateCpp::Finalize(){/*_en()*/
+  print_var_stats();
   return;
 }
 
 void BmiRainRateCpp::read_init_config(std::string config_file)
-{/*en()*/
+{/*_en()*/
   int config_line_count, max_config_line_length;
   // Note that this determines max line length including the ending return character, if present
   read_file_line_counts(config_file, &config_line_count, &max_config_line_length);
 
+
+#ifdef config_debug
+  // For debugging purposes, regular operation will not use this.
+  std::string all_text = "";
+
+  // Read the entire file into a single string
+
+  std::ifstream ifs(config_file);
+
+  if (ifs.is_open()) {/*_ln()*/
+    std::stringstream buffer;
+    buffer << ifs.rdbuf();
+    all_text = buffer.str();
+  }
+
+  std::cout<<"Config file contents: "<<std::endl;
+  std::cout<< "[" << all_text << "]" <<std::endl;
+
+
+
+#endif
+
+
+
   FILE* fp = fopen(config_file.c_str(), "r");
   if (fp == NULL)
+  {
     throw std::runtime_error("Invalid config file \""+config_file+"\"" SOURCE_LOC);
+  }
 
   std::vector<char> config_line(max_config_line_length + 1);
 
@@ -496,7 +669,7 @@ void BmiRainRateCpp::read_init_config(std::string config_file)
 }
 
 void BmiRainRateCpp::read_file_line_counts(std::string file_name, int* line_count, int* max_line_length)
-{/*en()*/
+{/*_en()*/
   *line_count = 0;
   *max_line_length = 0;
   int current_line_length = 0;
@@ -540,7 +713,7 @@ void BmiRainRateCpp::read_file_line_counts(std::string file_name, int* line_coun
 }
 
 double BmiRainRateCpp::calculate_rho_from_temp(double temp)
-{/*en()*/
+{/*_en()*/
     // return 0.998;
     // Calculate density
     // python ver: return 999.99399 + 0.04216485*temp - 0.007097451*(temp**2) + 0.00003509571*(temp**3) - 9.9037785E-8*(temp**4) 
@@ -557,7 +730,7 @@ double BmiRainRateCpp::calculate_rho_from_temp(double temp)
 
 
 double BmiRainRateCpp::calculate_surface_water_change()
-{/*en()*/
+{/*_en()*/
     // Calculate change in surface water between time steps
     // python ver: return current_amt - last_amt
     // # oops! it is supposed to be last_amt directly, rather than doing a subtraction
@@ -570,7 +743,7 @@ double BmiRainRateCpp::calculate_surface_water_change()
 }
 
 double BmiRainRateCpp::calculate_rain_rate(double rho, double precip)
-{/*en()*/
+{/*_en()*/
     // Calculate rain rate
     // python ver: ( dataFrame['APCP_surface'].shift(-1) / dataFrame['TMP_2maboveground'].apply(rho) ) / interval
     double interval = this->time_step_size;
@@ -579,7 +752,7 @@ double BmiRainRateCpp::calculate_rain_rate(double rho, double precip)
 
 #ifdef INVERSION
 double BmiRainRateCpp::calculate_precipitation(double rho, double rain_rate)
-{/*en()*/
+{/*_en()*/
     // Calculate precipitation rate
     // python ver: ( dataFrame['APCP_surface_shifted'] * dataFrame['TMP_2maboveground'].apply(rho) ) * interval
     double interval = this->time_step_size;
@@ -588,7 +761,7 @@ double BmiRainRateCpp::calculate_precipitation(double rho, double rain_rate)
 #endif
 
 std::string BmiRainRateCpp::format_rain_rate(double rain_rate)
-{/*en()*/
+{/*_en()*/
     // Format the rain rate value for readability
     // python ver: return "{:.2f}".format(rain_rate)
     char* buffer = new char[20];
@@ -607,6 +780,29 @@ int lastprint = 0;
 
 void BmiRainRateCpp::run(long dt)
 { //_en()
+    StoredVar* tmp_offset = this->get_var("TMP_time_offset");
+    StoredVar* precip_offset = this->get_var("precip_rate_time_offset");
+    int tmp_offset_val = tmp_offset->get_value();
+    int precip_offset_val = precip_offset->get_value();
+    if (this->current_time_step == 0) {
+      // First time step, setup config-dependent variables
+      if (tmp_offset_val > 0) {
+        throw std::runtime_error("TMP_time_offset must be <= 0");
+      }
+      if (precip_offset_val > 0) {
+        throw std::runtime_error("precip_rate_time_offset must be <= 0");
+      }
+      this->add_shift_queue("TMP_time_offset", AnyType(0.0), std::max(1, -tmp_offset_val));
+      this->add_shift_queue("precip_rate_time_offset", AnyType(0.0), std::max(1, -precip_offset_val));
+    }
+    // else if (this->current_time_step >= 150) {
+    //   throw std::runtime_error("Time step limit reached");
+    // }
+
+    // Things are happening, update the time step
+    this->current_time_step += 1;
+
+    // Get variables
     StoredVar* input_var_0 = this->input_vars[0]; // Surface water amount
     StoredVar* input_var_1 = this->input_vars[1]; // Temperature
     StoredVar* output_var_0 = this->output_vars[0]; // Rain rate
@@ -662,12 +858,39 @@ void BmiRainRateCpp::run(long dt)
     // Store precip_rate now to be used in next time step
     // Use precip_rate_store to calculate precipitation
     //Get precip_rate_store
-    double precip_rate_store = inversion_model_var_0->get_value();
-    double TMP_2aboveground_store = inversion_model_var_1->get_value();
+    // double precip_rate_store = inversion_model_var_0->get_value();
+    // double TMP_2aboveground_store = inversion_model_var_1->get_value();
+    ShiftQueue* precip_rate_queue = this->get_shift_queue("precip_rate_time_offset");
+    ShiftQueue* TMP_queue = this->get_shift_queue("TMP_time_offset");
+
+    double precip_rate_store = precip_rate_queue->get();
+    double TMP_2aboveground_store = TMP_queue->get();
+
 
     // Set precip_rate_store to precip_rate
-    inversion_model_var_0->set_value(inversion_input_var_0->get_value());
-    inversion_model_var_1->set_value(input_var_1->get_value());
+    // inversion_model_var_0->set_value(inversion_input_var_0->get_value());
+    // inversion_model_var_1->set_value(input_var_1->get_value());
+
+    precip_rate_queue->push(inversion_input_var_0->get_value());
+    TMP_queue->push(input_var_1->get_value(), false);
+
+    if (tmp_offset_val == 0) {
+      TMP_2aboveground_store = input_var_1->get_value();
+    }
+    if (precip_offset_val == 0) {
+      precip_rate_store = inversion_input_var_0->get_value();
+    }
+
+    // AnyType tmp = input_var_1->get_value();
+    // double tmp_val = tmp;
+    // AnyType tmp2 = (*TMP_queue)[-1];
+    // double tmp2_val = tmp2;
+    // std::string tmp_str = tmp.to_string();
+    // std::string tmp2_str = tmp2.to_string();
+    // if (tmp_str != tmp2_str|| tmp_val != tmp2_val || tmp_val != 0.0 || tmp2_val != 0.0) {
+    //   std::cout << "tmp: " << tmp_str << " queue[-1]: " << tmp2_str << std::endl << "tmp_val: " << tmp_val << " queue[-1] val: " << tmp2_val << std::endl;
+    // }
+    // std::cout << "tmp: " <<  << " queue[-1]: " << (*TMP_queue)[-1].to_string() << std::endl;
 
     // Calculate precipitation using precip_rate_store
     double prev_rho = calculate_rho_from_temp(TMP_2aboveground_store-273.15);
