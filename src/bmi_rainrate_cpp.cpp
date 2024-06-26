@@ -7,23 +7,6 @@
 // ^ Credit https://www.decompile.com/cpp/faq/file_and_line_error_string.htm
 
 
-
-// #define DEGUG 1
-// #ifndef DEBUG_UTILS
-//   #define DEBUG_UTILS
-//   #if DEGUG >= 1
-//     #define _log(msg) fprintf(stderr, "[%s] %s\n", __func__, msg)
-//     #define _en() fprintf(stderr, "[%s] %s\n", __func__, "ENTER");
-//     #define _ex() fprintf(stderr, "[%s] %s\n", __func__, "EXIT");
-//     #define _ln() fprintf(stderr, "%d\n", __LINE__);
-//   #else
-//     #define _log(msg)
-//     #define _en()
-//     #define _ex()
-//     #define _ln()
-//   #endif
-// #endif
-
 #include "bmi_rainrate_cpp.hpp"
 
 #include <algorithm>
