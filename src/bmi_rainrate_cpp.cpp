@@ -32,6 +32,9 @@
 #include <math.h>
 #include <stdexcept>
 
+std::map<std::string, std::map<std::string, int>> anytype_allocs;
+size_t anytype_uuid = 0;
+
 std::string BmiRainRateCpp::GetComponentName() {/*_ln()*/
   // return "Testing BMI C++ Model";
   return "BMI Rain Rate C++";

@@ -101,11 +101,11 @@ struct StoredVar {
     }
     void* get_ptr() {/*_lnf() _si()*/ return this->var->get_ptr(); }
     template <typename T>
-    T get_value() {/*_lnf() _si()*/ return this->var->get_value<T>(); }
+    T get_value() {/*_lnf() _si()*/ return *this->var->get_val(); }
     template <typename T>
-    T* get_var() {/*_lnf() _si()*/ return this->var->get_var<T>(); }
+    T* get_var() {/*_lnf() _si()*/ return this->var->get_val(); }
     template <typename T>
-    void set_value(T value) {/*_lnf() _si()*/ this->var->set_value(value); }
+    void set_value(T value) {/*_lnf() _si()*/ this->var->set_val(value); }
 
     AnyType* get_var() {/*_lnf() _si()*/ return this->var; }
     AnyType get_value() {/*_lnf() _si()*/ return *this->var; }
@@ -148,9 +148,9 @@ struct ShiftQueue {
         std::string before = std::string(*this);
         // std::vector<AnyType> new_queue;
         for (int i = 0; i < this->max_size - 1; i++) {
-            this->queue[i].overwrite(this->queue[i + 1]);
+            this->queue[i].set_val(this->queue[i + 1].get_val());
         }
-        this->queue[this->max_size - 1].overwrite(this->init_val);
+        this->queue[this->max_size - 1].set_val(this->init_val.get_val());
         std::string after = std::string(*this);
         if (verbose&&after!=before) {
             std::cout << "Shifted " << this->name << " from " << before << " to " << after << std::endl;
@@ -168,7 +168,7 @@ struct ShiftQueue {
         
         this->shift(verbose);
         // this->queue.push_back(AnyType(val));
-        this->queue[this->max_size - 1].overwrite(val);
+        this->queue[this->max_size - 1].set_val(val.get_val());
         if (verbose&&prev!=val.to_string()) {
             std::cout << "Pushed " << val.to_string() << " to " << this->name << " from " << prev << std::endl;
         }
@@ -176,7 +176,7 @@ struct ShiftQueue {
     operator std::string () {
         std::string out = this->name + ": ";
         for (int i = 0; i < this->max_size; i++) {
-            out += this->queue[i].cast_to_string() + ", ";
+            out += this->queue[i].to_string() + ", ";
         }
         return out;
     }

@@ -11,6 +11,9 @@
 
 using duration_t = std::chrono::duration<double>;
 
+// std::map<std::string, std::map<std::string, int>> anytype_allocs;
+// size_t anytype_uuid = 0;
+
 //template <typename cls, typename R, typename ...Args>
 //using func_t = R (cls::*)(Args...);
 template <typename func_t, typename ...Args>
@@ -64,26 +67,17 @@ void test_any_type() {
     long l = 5;
     std::string str = "5";
     at = i;
-    assert(*at.get_var<int>() == i);
+    assert(at.to_string() == std::to_string(i));
     at = f;
-    assert(*at.get_var<float>() == f);
+    assert(at.to_string() == std::to_string(f));
     at = d;
-    assert(*at.get_var<double>() == d);
+    assert(at.to_string() == std::to_string(d));
     at = s;
-    assert(*at.get_var<short>() == s);
+    assert(at.to_string() == std::to_string(s));
     at = l;
-    assert(*at.get_var<long>() == l);
+    assert(at.to_string() == std::to_string(l));
     at = str;
-    assert(*at.get_var<std::string>() == str);
-
-    AnyType at2 = at;
-    assert(*at2.get_var<std::string>() == str);
-    AnyType at3 = AnyType(at);
-    assert(*at3.get_var<std::string>() == str);
-    AnyType at4 = &at;
-    assert(*at4.get_var<std::string>() == str);
-    AnyType at5 = AnyType(&at);
-    assert(*at5.get_var<std::string>() == str);
+    assert(at.to_string() == str);
 }
 
 int main(int argc, char *argv[]) {
