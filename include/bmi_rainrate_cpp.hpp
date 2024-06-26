@@ -100,39 +100,6 @@ class BmiRainRateCpp : public bmi::Bmi {
 
     private:
 
-        // check_runtime_stage()
-        // Does basic checks to see what stage the model is in
-        // i.e. Before run, during run, after run
-        // Being: "INIT", "RUN", "FINALIZE"
-        enum RunStage { INIT, RUN, FINALIZE };
-        std::vector<std::string> translate_run_stage = {
-            "INIT", "RUN", "FINALIZE"
-        };
-        RunStage runtime_stage = INIT;
-        std::string check_runtime_stage();
-        RunStage get_runtime_stage();
-
-
-        // process_var_name(std::string name)
-        // Process the variable name to match the stored variable names
-        // If the variable name is not found, based on runstage, either error or branch to additional logic
-        // For example, aliases for variables
-        // Or, during the initialization stage, the variable may be a model parameter
-        std::string process_var_name(std::string name);
-
-        // handle_model_param(std::string name)
-        // Handle the model parameter by taking any necessary actions
-        // Returns true if the variable is a model parameter, and the corresponding action was taken
-        // Returns false if the variable is not a model parameter or the action was not taken
-        bool handle_model_param(std::string name);
-
-        // add_model_param(std::string name, void* value)
-        // Add a model parameter to the model
-        // We don't know the type of the value yet, so we receive it as a void pointer
-        // We will assume by default the value is a string
-        // If the size is not a string, we will try to match it to other types
-        void add_model_param(std::string name);
-
         // typedef std::vector<StoredVar*> VarList;
 
         inline void set_usage(bool input_array = false, bool output_array = false, bool model_params = false){
@@ -151,14 +118,14 @@ class BmiRainRateCpp : public bmi::Bmi {
 
         // Access vectors
         VarList input_vars = {
-            (new StoredVar(0.0, "APCP_surface", "double", "kg m-2", "node", 1, 1))->setup(_mk_setup_nofunc_info()),
-            (new StoredVar(0.0, "TMP_2maboveground", "double", "K", "node", 1, 1))->setup(_mk_setup_nofunc_info())
+            (new StoredVar(0.0, "APCP_surface", "double", "kg m-2", "node", 1, 1))/*->setup()*/,
+            (new StoredVar(0.0, "TMP_2maboveground", "double", "K", "node", 1, 1))/*->setup()*/
         };
         VarList output_vars = {
-            (new StoredVar(0.0, "atmosphere_water__precipitation_rate", "double", "m s-1", "node", 1, 1))->setup(_mk_setup_nofunc_info())
+            (new StoredVar(0.0, "atmosphere_water__precipitation_rate", "double", "m s-1", "node", 1, 1))/*->setup()*/
         };
         VarList model_vars = {
-            (new StoredVar(0.0, "surface_water__last_value", "double", "kg m-2", "node", 1, 1))->setup(_mk_setup_nofunc_info())
+            (new StoredVar(0.0, "surface_water__last_value", "double", "kg m-2", "node", 1, 1))/*->setup()*/
         };
 
         std::vector<VarList*> all_vars = {&input_vars, &output_vars, &model_vars};
@@ -184,65 +151,6 @@ class BmiRainRateCpp : public bmi::Bmi {
         std::vector<ShiftQueue*> shift_queues;
         ShiftQueue* get_shift_queue(std::string name);
         void add_shift_queue(std::string name, AnyType init_val, int max_size);
-
-        struct var_stats {
-            std::string name;
-            std::vector<int> setvalue_timesteps;
-            std::vector<int> getvalue_timesteps;
-            int setvalue_count;
-            int getvalue_count;
-            operator std::string() {
-                int max_reasonable = 20;
-                std::string out = name + ":\n";
-                out += "  setvalue_count: " + std::to_string(setvalue_count) + "\n";
-                out += "  getvalue_count: " + std::to_string(getvalue_count) + "\n";
-                out += "  setvalue_timesteps: ";
-                for (int i = 0; i < setvalue_timesteps.size(); i++) {
-                    if (i >= max_reasonable) {
-                        out += "...";
-                        break;
-                    }
-                    out += std::to_string(setvalue_timesteps[i]);
-                    if (i < setvalue_timesteps.size() - 1) {
-                        out += ", ";
-                    }
-                }
-                out += "\n";
-                out += "  getvalue_timesteps: ";
-                for (int i = 0; i < getvalue_timesteps.size(); i++) {
-                    if (i >= max_reasonable) {
-                        out += "...";
-                        break;
-                    }
-                    out += std::to_string(getvalue_timesteps[i]);
-                    if (i < getvalue_timesteps.size() - 1) {
-                        out += ", ";
-                    }
-                }
-                out += "\n";
-                return out;
-            }
-            void add_setvalue(int timestep) {
-                setvalue_count++;
-                setvalue_timesteps.push_back(timestep);
-            }
-            void add_getvalue(int timestep) {
-                getvalue_count++;
-                getvalue_timesteps.push_back(timestep);
-            }
-            var_stats(std::string name): name(name), setvalue_count(0), getvalue_count(0) {}
-        };
-
-        std::vector<var_stats*> var_stats_list;
-
-        var_stats* get_var_stats(std::string name);
-        void var_stats_setvalue(std::string name);
-        void var_stats_getvalue(std::string name);
-        void print_var_stats();
-
-
-        
-        
         
         std::map<std::string,int> type_sizes = {
             {BMI_TYPE_NAME_DOUBLE, sizeof(double)},
