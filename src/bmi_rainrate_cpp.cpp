@@ -567,7 +567,7 @@ void BmiRainRateCpp::UpdateUntil(double future_time){/*_en()*/
 }
 
 void BmiRainRateCpp::Finalize(){/*_en()*/
-  print_var_stats();
+  // print_var_stats();
   return;
 }
 
@@ -912,14 +912,14 @@ void BmiRainRateCpp::run(long dt)
     // this->model_var_0.get()[0] = *this->input_var_0.get();
     model_var_0->set_value(input_var_0->get_value());
 
-    if (lastprint + 10 < time(0)) {/*_ln()*/
-        lastprint = time(0);
-        std::string msg_start = "\033[1;40m";
-        std::string msg_end = "\033[0m";
-        std::string model_id = "bmi_rainrate_cpp";
-        std::string msg = msg_start + "[" + model_id + "] " + "Rain rate: " + format_rain_rate(rain_rate) + " m/s" + msg_end;
-        fprintf(stderr, "%s\n", msg.c_str());
-    }
+    // if (lastprint + 10 < time(0)) {/*_ln()*/
+    //     lastprint = time(0);
+    //     std::string msg_start = "\033[1;40m";
+    //     std::string msg_end = "\033[0m";
+    //     std::string model_id = "bmi_rainrate_cpp";
+    //     std::string msg = msg_start + "[" + model_id + "] " + "Rain rate: " + format_rain_rate(rain_rate) + " m/s" + msg_end;
+    //     fprintf(stderr, "%s\n", msg.c_str());
+    // }
     
     // Update time
     this->current_model_time += dt;
