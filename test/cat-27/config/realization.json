@@ -1,0 +1,54 @@
+{
+    "global": {
+        "name": "global",
+        "formulations": [
+            {
+                "name": "bmi_multi",
+                "params": {
+                    "name": "bmi_multi",
+                    "model_type_name": "bmi_multi",
+                    "init_config": "",
+                    "uses_forcing_file": false,
+                    "main_output_variable": "APCP_surface_shifted",
+                    "modules": [
+                        {
+                            "name": "bmi_c++",
+                            "params": {
+                                "model_type_name": "rainrate_bmi_model",
+                                "init_config": "/dev/null",
+                                "uses_forcing_file": true,
+                                "main_output_variable": "atmosphere_water__precipitation_rate",
+                                "library_file": "/dmod/shared_libs/libbmi_rainrate_cpp_model.so.1.0.0",
+                                "forcing_file": "./forcings/by_catchment/{{id}}.csv",
+                                "model_params": {
+                                    "TMP_time_offset": 0,
+                                    "precip_rate_time_offset": -10
+                                },
+                                "output_variables": [
+                                    "precip_rate",
+                                    "TMP_2maboveground",
+                                    "partial_calc__TMP_2maboveground_apply_rho",
+                                    "APCP_surface",
+                                    "APCP_surface_shifted"
+                                ],
+                                "allow_exceed_end_time": true
+                            }
+                        }
+                    ]
+                }
+            }
+        ],
+        "forcing": {
+            "file_pattern": "{{id}}.csv",
+            "path": "./forcings/by_catchment/",
+            "provider": "CsvPerFeature"
+        }
+    },
+    "time": {
+        "start_time": "2015-12-01 00:00:00",
+        "end_time": "2015-12-30 23:00:00",
+        "output_interval": 3600,
+        "nts": 720
+    },
+    "output_root": "/ngen/ngen/data/outputs/ngen"
+}
