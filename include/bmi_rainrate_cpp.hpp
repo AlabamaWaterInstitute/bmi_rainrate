@@ -1,13 +1,9 @@
+#pragma once
 #ifndef BMI_RAINRATE_CPP_H
 #define BMI_RAINRATE_CPP_H
 
-#include <memory>
-#include <string>
-#include <vector>
-#include <map>
-#include "bmi.hxx"
-#include <numeric>
-#include <iostream>
+#include "basic_includes.hpp"
+#include "stored_var.hpp"
 
 #define TRUE 1
 #define FALSE 0
@@ -15,9 +11,6 @@
 
 #define DEFAULT_TIME_STEP_SIZE 3600
 #define DEFAULT_TIME_STEP_COUNT 24
-
-#define INPUT_VAR_NAME_COUNT 0
-#define OUTPUT_VAR_NAME_COUNT 1
 
 #define BMI_TYPE_NAME_DOUBLE "double"
 #define BMI_TYPE_NAME_FLOAT "float"
@@ -101,9 +94,13 @@ class BmiRainRateCpp : public bmi::Bmi {
         virtual void GetGridFaceNodes(const int grid, int *face_nodes);
         virtual void GetGridNodesPerFace(const int grid, int *nodes_per_face);
 
+        std::string alert_unknown_variable(std::string name);
+
 
 
     private:
+
+        // typedef std::vector<StoredVar*> VarList;
 
         inline void set_usage(bool input_array = false, bool output_array = false, bool model_params = false){
             use_input_array = input_array;
@@ -118,27 +115,42 @@ class BmiRainRateCpp : public bmi::Bmi {
         // atmosphere_water__liquid_equivalent_precipitation_rate
         // TMP_2maboveground:
         // land_surface_air__temperature
-   
-        std::vector<std::string> input_var_names = { "APCP_surface", "TMP_2maboveground"};
-        // APCP_surface, TMP_2maboveground
-        std::vector<std::string> output_var_names = { "atmosphere_water__precipitation_rate" };
-        std::vector<std::string> model_var_names = { "surface_water__last_value" };
-        std::vector<std::string> input_var_types = { "double", "double" };
-        std::vector<std::string> output_var_types = { "double" };
-        std::vector<std::string> model_var_types = { "double" };
-        std::vector<std::string> input_var_units = { "kg m-2", "K" };
-        std::vector<std::string> output_var_units = { "m s-1" };
-        std::vector<std::string> model_var_units = { "kg m-2" };
-        std::vector<std::string> input_var_locations = { "node", "node" };
-        std::vector<std::string> output_var_locations = { "node" };
-        std::vector<std::string> model_var_locations = { "node" };
 
-        std::vector<int> input_var_item_count = { 1, 1 };
-        std::vector<int> output_var_item_count = { 1 };
-        std::vector<int> model_var_item_count = { 1 };
-        std::vector<int> input_var_grids = { 1, 1 };
-        std::vector<int> output_var_grids = { 1 };
-        std::vector<int> model_var_grids = { 1 };
+        // Access vectors
+        VarList input_vars = {
+            (new StoredVar(0.0, "APCP_surface", "double", "kg m-2", "node", 1, 1))/*->setup()*/,
+            (new StoredVar(0.0, "TMP_2maboveground", "double", "K", "node", 1, 1))/*->setup()*/
+        };
+        VarList output_vars = {
+            (new StoredVar(0.0, "atmosphere_water__precipitation_rate", "double", "m s-1", "node", 1, 1))/*->setup()*/
+        };
+        VarList model_vars = {
+            (new StoredVar(0.0, "surface_water__last_value", "double", "kg m-2", "node", 1, 1))/*->setup()*/
+        };
+
+        std::vector<VarList*> all_vars = {&input_vars, &output_vars, &model_vars};
+
+        StoredVar* get_var(std::string name);
+
+        // Converting the above mess into a more compact and efficient form
+        enum VarType { INPUT, OUTPUT, MODEL }; // Access the correct vector indices by name
+        std::vector<std::vector<std::string>> var_names;
+        std::vector<std::vector<std::string>> var_types;
+        std::vector<std::vector<std::string>> var_units;
+        std::vector<std::vector<std::string>> var_locations;
+        std::vector<std::vector<int>> var_item_count;
+        std::vector<std::vector<int>> var_grids;
+
+        void register_var_metadata(StoredVar* var, VarType type);
+
+        void finalize_vars();
+
+        VarType get_VarType(std::string name);
+
+        // ShiftQueues for storing and accessing previous values
+        std::vector<ShiftQueue*> shift_queues;
+        ShiftQueue* get_shift_queue(std::string name);
+        void add_shift_queue(std::string name, AnyType init_val, int max_size);
         
         std::map<std::string,int> type_sizes = {
             {BMI_TYPE_NAME_DOUBLE, sizeof(double)},
@@ -156,6 +168,7 @@ class BmiRainRateCpp : public bmi::Bmi {
         long epoch_start_time = 0.0;
         int num_time_steps = 0;
         double current_model_time = 0.0;
+        size_t current_time_step = 0;
         double model_end_time = 0.0;
         int time_step_size = DEFAULT_TIME_STEP_SIZE;
 
@@ -166,33 +179,8 @@ class BmiRainRateCpp : public bmi::Bmi {
         // std::unique_ptr<double> input_var_1 = nullptr; //TMP_2maboveground //land_surface_air__temperature
         // std::unique_ptr<double> output_var_0 = nullptr; //atmosphere_water__precipitation_rate
         // std::unique_ptr<double> model_var_0 = nullptr; //surface_water__last_value
-        template <typename T>
-        struct StoredVar {
-            T* var;
-            std::string name;
-            std::string type;
-            std::string units;
-            std::string location;
-            int item_count;
-            int grid;
-            StoredVar(T* var, std::string name, std::string type, std::string units, std::string location, int item_count, int grid):
-                var(var), name(name), type(type), units(units), location(location), item_count(item_count), grid(grid) {}
-            StoredVar(T var, std::string name, std::string type, std::string units, std::string location, int item_count, int grid):
-                name(name), type(type), units(units), location(location), item_count(item_count), grid(grid) {
-                this->var = new T(var);
-            }
-            ~StoredVar() {
-                delete this->var;
-            }
-            void* get_ptr() { return std::move(this->var); }
-            T* get_var() { return this->var; }
-            T get_value() { return *this->var; }
-            void set_value(T value) { *this->var = value; }
-        };
-        // Access vectors
-        std::vector<StoredVar<double>*> input_vars;
-        std::vector<StoredVar<double>*> output_vars;
-        std::vector<StoredVar<double>*> model_vars;
+        
+        
 
         double get_input_var_value(int index);
         double get_output_var_value(int index);
@@ -257,20 +245,14 @@ extern "C"
     *
     * @return A pointer to the newly allocated instance.
     */
-	BmiRainRateCpp *bmi_model_create()
-	{
-		return new BmiRainRateCpp();
-	}
+	BmiRainRateCpp *bmi_model_create();
 
     /**
      * @brief Destroy/free an instance created with @see bmi_model_create
      * 
      * @param ptr 
      */
-	void bmi_model_destroy(BmiRainRateCpp *ptr)
-	{
-		delete ptr;
-	}
+	void bmi_model_destroy(BmiRainRateCpp *ptr);
 }
 
 #endif //BMI_RAINRATE_CPP_H

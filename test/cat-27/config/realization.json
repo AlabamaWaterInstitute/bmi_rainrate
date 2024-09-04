@@ -1,31 +1,28 @@
 {
     "global": {
+        "name": "global",
         "formulations": [
             {
                 "name": "bmi_multi",
                 "params": {
                     "name": "bmi_multi",
                     "model_type_name": "bmi_multi",
-                    "main_output_variable": "APCP_surface_shifted",
-                    "forcing_file": "",
                     "init_config": "",
-                    "allow_exceed_end_time": true,
+                    "uses_forcing_file": false,
+                    "main_output_variable": "APCP_surface_shifted",
                     "modules": [
                         {
                             "name": "bmi_c++",
                             "params": {
-                                "name": "bmi_rainrate_cpp",
                                 "model_type_name": "rainrate_bmi_model",
-                                "main_output_variable": "atmosphere_water__precipitation_rate",
                                 "init_config": "/dev/null",
-                                "allow_exceed_end_time": true,
-                                "fixed_time_step": false,
                                 "uses_forcing_file": true,
-                                "forcing_file": "./forcings/by_catchment/{{id}}.csv",
+                                "main_output_variable": "atmosphere_water__precipitation_rate",
                                 "library_file": "/dmod/shared_libs/libbmi_rainrate_cpp_model.so.1.0.0",
-                                "variables_names_map": {
-                                    "atmosphere_water__liquid_equivalent_precipitation_rate" : "APCP_surface",
-                                    "land_surface_air__temperature" : "TMP_2maboveground"
+                                "forcing_file": "./forcings/by_catchment/{{id}}.csv",
+                                "model_params": {
+                                    "TMP_time_offset": 0,
+                                    "precip_rate_time_offset": -10
                                 },
                                 "output_variables": [
                                     "precip_rate",
@@ -33,11 +30,11 @@
                                     "partial_calc__TMP_2maboveground_apply_rho",
                                     "APCP_surface",
                                     "APCP_surface_shifted"
-                                ]
+                                ],
+                                "allow_exceed_end_time": true
                             }
                         }
-                    ],
-                    "uses_forcing_file": false
+                    ]
                 }
             }
         ],
@@ -48,13 +45,10 @@
         }
     },
     "time": {
-        "start_time": "2018-04-01 00:00:00",
-        "end_time": "2018-04-30 00:00:00",
+        "start_time": "2015-12-01 00:00:00",
+        "end_time": "2015-12-30 23:00:00",
         "output_interval": 3600,
-        "nts": 8352.0
-    },
-    "routing": {
-        "t_route_config_file_with_path": "/ngen/ngen/data/config/ngen.yaml"
+        "nts": 720
     },
     "output_root": "/ngen/ngen/data/outputs/ngen"
 }
